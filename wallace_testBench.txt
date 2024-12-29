@@ -1,0 +1,87 @@
+`timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 21.11.2024 00:36:47
+// Design Name: 
+// Module Name: test
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
+
+module wallaceTest;
+
+    // Inputs
+    reg [7:0] A, B;
+
+    // Outputs
+    wire [15:0] Z;
+    wire cout;
+
+    // Instantiate the Wallace Tree Multiplier module
+    wallace uut (
+        .A(A),
+        .B(B),
+        .cout(cout),
+        .Z(Z)
+    );
+
+    // Initial block to apply test vectors
+    initial begin
+    // Initialize inputs
+           A = 8'b00000000;
+           B = 8'b00000000;
+        // Monitor the changes to the inputs and outputs
+        $monitor("Time = %0t ns, A = %b (%0d), B = %b (%0d), Z = %b (%0d), Cout = %b", 
+                 $time, A, A, B, B, Z, Z, cout);
+
+        // Test cases
+        // Case 1: Both inputs are zero
+        #10 A = 8'b00000000; B = 8'b00000000; // A = 0, B = 0
+        
+        // Case 2: One input is zero, other is non-zero
+        #10 A = 8'b00000000; B = 8'b00001111; // A = 0, B = 15
+        #10 A = 8'b00001111; B = 8'b00000000; // A = 15, B = 0
+        
+        // Case 3: Maximum input values
+        #10 A = 8'b11111111; B = 8'b11111111; // A = 255, B = 255
+
+        // Case 4: One input is maximum, other is minimum
+        #10 A = 8'b11111111; B = 8'b00000001; // A = 255, B = 1
+        #10 A = 8'b00000001; B = 8'b11111111; // A = 1, B = 255
+        
+        // Case 5: Alternating bits
+        #10 A = 8'b01010101; B = 8'b01010101; // A = 85, B = 85
+        #10 A = 8'b10101010; B = 8'b10101010; // A = 170, B = 170
+
+        // Case 6: Small numbers
+        #10 A = 8'b00000010; B = 8'b00000011; // A = 2, B = 3
+
+        // Case 7: Large and small number combination
+        #10 A = 8'b11111111; B = 8'b00000001; // A = 255, B = 1
+
+        // Case 8: Mixed inputs (Intermediate values)
+        #10 A = 8'b00001111; B = 8'b11110000; // A = 15, B = 240
+        #10 A = 8'b10011001; B = 8'b01100110; // A = 153, B = 102
+
+        // Case 9: Random numbers
+        #10 A = 8'b00110110; B = 8'b01011010; // A = 54, B = 90
+        #10 A = 8'b11001100; B = 8'b00110011; // A = 204, B = 51
+
+        // Stop simulation after all test cases
+        #10 $stop;
+    end
+
+endmodule
+

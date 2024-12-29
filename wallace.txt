@@ -1,0 +1,113 @@
+// Implementing Wallace 16x16 using Wallace 4x4
+
+`timescale 1ns / 1ps
+
+
+
+
+
+module HA(input a,b, output s,cout);
+    assign s = a^b;
+    assign cout = a&b;
+endmodule
+
+module FA(input a,b,cin ,output s,cout);
+    assign s = a^b^cin;
+    assign cout = (a&b)|(a&cin)|(b&cin);
+endmodule
+       
+module ripple16(X, Y, S, Co);
+    input [15:0] X, Y;// Two 8-bit inputs
+     output [15:0] S;
+     output Co;
+     wire w1, w2, w3,w4,w5,w6,w7,w8,w9,w10,w11,w12,w13,w14,w15;
+     
+     FA u1(X[0], Y[0], 1'b0, S[0], w1);
+     FA u2(X[1], Y[1], w1, S[1], w2);
+     FA u3(X[2], Y[2], w2, S[2], w3);
+     FA u4(X[3], Y[3], w3, S[3], w4);
+     FA u5(X[4], Y[4], w4, S[4], w5);
+     FA u6(X[5], Y[5], w5, S[5], w6);
+     FA u7(X[6], Y[6], w6, S[6], w7);
+     FA u8(X[7], Y[7], w7, S[7], w8);
+     FA u9(X[8], Y[8], w8, S[8], w9);
+     FA u10(X[9], Y[9], w9, S[9], w10);
+     FA u11(X[10], Y[10], w10, S[10], w11);
+     FA u12(X[11], Y[11], w11, S[11], w12);
+     FA u13(X[12], Y[12], w12, S[12], w13);
+     FA u14(X[13], Y[13], w13, S[13], w14);
+     FA u15(X[14], Y[14], w14, S[14], w15);
+     FA u16(X[15], Y[15], w15, S[15], Co);
+     
+endmodule
+
+
+module tree_multiplier(input [3:0]A,B,output [7:0]z);
+wire [3:0]p[3:0];
+wire [10:0]c;
+wire [8:0] ca;
+wire [6:0]s;
+genvar g;
+
+generate
+for(g=0;g<4;g = g+1)
+begin:product_generation
+assign p[g][0] = A[g]&B[0];
+assign p[g][1] = A[g]&B[1];
+assign p[g][2] = A[g]&B[2];
+assign p[g][3] = A[g]&B[3];  
+end
+endgenerate 
+
+// initilize op
+assign z[0]=p[0][0];
+
+ // 1st stage
+ HA h1(p[1][2],p[0][3],s[1],c[1]);
+ HA h2(p[1][3],p[2][2],s[2],c[2]);
+  
+// 2nd stage
+  
+ HA h3(p[1][1],p[0][2],s[3],c[3]);
+ FA f4(p[3][0],p[2][1],s[1],s[4],c[4]);
+ FA f5(p[3][1],s[2],c[1],s[5],c[5]);
+ FA f6(p[3][2],p[2][3],c[2],s[6],c[6]);
+ 
+// final stage 
+// ripple carry adder
+  FA a0(p[0][0],1'b0,1'b0,z[0],ca[0]);
+  FA a1(p[1][0],p[0][1],ca[0],z[1],ca[1]);
+  FA a2(p[2][0],s[3],ca[1],z[2],ca[2]);
+  FA a4(s[4],c[3],ca[2],z[3],ca[3]);
+  FA a5(c[4],s[5],ca[3],z[4],ca[4]);
+  FA a6(c[5],s[6],ca[4],z[5],ca[5]);
+  FA a7(p[3][3],c[6],ca[5],z[6],ca[6]);
+  assign z[7] = ca[6];
+endmodule
+
+module wallace(input [7:0]A, B, output cout, [15:0]Z);
+    wire [15:0] z1, z2, z3, z4;
+    wire [15:0] sum1, sum2;
+
+    // Partial product generation using 4x4 multipliers
+    tree_multiplier t1(A[3:0], B[3:0], z1[7:0]);     // Lower 4 bits of A * Lower 4 bits of B
+    assign z1[15:8] = 8'b0;                          // Upper bits are 0 for z1
+
+    tree_multiplier t2(A[3:0], B[7:4], z2[11:4]);    // Lower 4 bits of A * Upper 4 bits of B
+    assign z2[15:12] = 4'b0;                         // Align z2 to proper position
+    assign z2[3:0] = 4'b0;
+
+    tree_multiplier t3(A[7:4], B[3:0], z3[11:4]);    // Upper 4 bits of A * Lower 4 bits of B
+    assign z3[15:12] = 4'b0;                         // Align z3 to proper position
+    assign z3[3:0] = 4'b0;
+
+    tree_multiplier t4(A[7:4], B[7:4], z4[15:8]);    // Upper 4 bits of A * Upper 4 bits of B
+    assign z4[7:0] = 8'b0;                           // Align z4 to proper position
+
+    // Add partial products using 16-bit ripple carry adders
+    ripple16 r1(z1, z2, sum1, cout);                // First stage of addition
+    ripple16 r2(sum1, z3, sum2, cout);              // Second stage of addition
+    ripple16 r3(sum2, z4, Z, cout);                 // Final stage of addition
+endmodule
+
+
